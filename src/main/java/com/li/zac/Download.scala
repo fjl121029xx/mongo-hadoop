@@ -45,7 +45,7 @@ object Download {
 
     val conf = new SparkConf()
       .setAppName("mongo-ztk_answer_card")
-      //      .setMaster("local")
+//      .setMaster("local")
       .set("hive.exec.dynamic.partition", "true")
       .set("hive.exec.dynamic.partition.mode", "nonstrict")
       .set("hive.exec.max.dynamic.partitions", "1800")
@@ -131,8 +131,26 @@ object Download {
         val format2 = new SimpleDateFormat("yyyyMM")
         val arr = new ArrayBuffer[AnswerCard3]()
 
-        val start = System.currentTimeMillis() - 2 * 24 * 60 * 60 * 1000L
+        //                val start = System.currentTimeMillis() - 2 * 24 * 60 * 60 * 1000L
         val end = System.currentTimeMillis()
+
+        val nWeek = format2.format(new Date(System.currentTimeMillis()))
+
+        var year = Integer.parseInt(nWeek.substring(0, 4))
+        var week =  Integer.parseInt(nWeek.substring(4, 6))
+
+
+        var w = ""
+        if (week == 1) {
+          year = year - 1
+          w = "52"
+        } else if (week < 11 && week > 1) {
+          w = 0 + "" + (week - 1)
+        } else {
+          w = (week - 1) + ""
+        }
+
+        val start = format2.parse(year + "" + w).getTime
 
         while (ite.hasNext) {
 
@@ -142,12 +160,12 @@ object Download {
           try {
 
             val userId = r.getAs[Long](0).longValue()
-            val corrects = r.getAs[Seq[Int]](1).toArray
-            val questions = r.getAs[Seq[Int]](2).toArray
-            val times = r.getAs[Seq[Int]](3).toArray
+            val corrects = r.getAs[Seq[Long]](1).map(_.asInstanceOf[Int].intValue()).toArray
+            val questions = r.getAs[Seq[Long]](2).map(_.asInstanceOf[Int].intValue()).toArray
+            val times = r.getAs[Seq[Long]](3).map(_.asInstanceOf[Int].intValue()).toArray
             val createTime = r.getAs[Long](4).longValue()
-            val subject = r.getAs[Int](5).intValue()
-            val status = r.getAs[Int](6).intValue()
+            val subject = r.getAs[Long](5).asInstanceOf[Int].intValue()
+            val status = r.getAs[Long](6).asInstanceOf[Int].intValue()
 
             val points = new ArrayBuffer[Int]()
             questions.foreach { qid =>
@@ -158,13 +176,19 @@ object Download {
             //
             if (createTime >= start && end >= createTime && status == 3) {
 
-              arr += AnswerCard3(userId, corrects, questions, points.toArray, times, format.format(new Date(createTime)), subject,format2.format(new Date(createTime)))
+              arr += AnswerCard3(userId, corrects, questions, points.toArray, times, format.format(new Date(createTime)), subject, format2.format(new Date(createTime)))
             }
           } catch {
             case ex: NumberFormatException => {
+              ex.printStackTrace()
               println(r)
             }
             case ex2: NullPointerException => {
+              ex2.printStackTrace()
+              println(r)
+            }
+            case ex3: ClassCastException => {
+              ex3.printStackTrace()
               println(r)
             }
           }
