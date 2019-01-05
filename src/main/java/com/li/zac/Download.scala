@@ -36,15 +36,15 @@ object Download {
       hive_outPut_table = args(1)
     }
 
-//    inputUrl = "mongodb://192.168.100.20:37017/huatu_ztk"
-//    hive_outPut_table = "zac2"
+    //    inputUrl = "mongodb://192.168.100.20:37017/huatu_ztk"
+    //    hive_outPut_table = "zac2"
     //
     val warehouseLocation = new File("spark-warehouse").getAbsolutePath
     System.setProperty("HADOOP_USER_NAME", "root")
 
     val conf = new SparkConf()
       .setAppName("mongo-ztk_answer_card")
-//      .setMaster("local")
+      //      .setMaster("local")
       .set("hive.exec.dynamic.partition", "true")
       .set("hive.exec.dynamic.partition.mode", "nonstrict")
       .set("hive.exec.max.dynamic.partitions", "1800")
@@ -155,7 +155,7 @@ object Download {
               points += pid
             }
             //
-            if (status == 3) {
+            if (createTime >= start && createTime <= end && status == 3) {
 
               arr += AnswerCard3(userId, corrects, questions, points.toArray, times, format.format(new Date(createTime)), subject)
             }
