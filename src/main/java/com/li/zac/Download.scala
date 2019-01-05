@@ -17,8 +17,7 @@ case class AnswerCard3(
                         point: Array[Int],
                         answertime: Array[Int],
                         createtime: String,
-                        subject: Int,
-                        partitiontime: String
+                        subject: Int
                       )
 
 object Download {
@@ -37,8 +36,8 @@ object Download {
       hive_outPut_table = args(1)
     }
 
-    //    //    inputUrl = "mongodb://192.168.100.20:37017/huatu_ztk"
-    //    //    hive_outPut_table = "zac2"
+//    inputUrl = "mongodb://192.168.100.20:37017/huatu_ztk"
+//    hive_outPut_table = "zac2"
     //
     val warehouseLocation = new File("spark-warehouse").getAbsolutePath
     System.setProperty("HADOOP_USER_NAME", "root")
@@ -131,26 +130,8 @@ object Download {
         val format2 = new SimpleDateFormat("yyyyMM")
         val arr = new ArrayBuffer[AnswerCard3]()
 
-        //                val start = System.currentTimeMillis() - 2 * 24 * 60 * 60 * 1000L
+        val start = System.currentTimeMillis() - 2 * 24 * 60 * 60 * 1000L
         val end = System.currentTimeMillis()
-
-        val nWeek = format2.format(new Date(System.currentTimeMillis()))
-
-        var year = Integer.parseInt(nWeek.substring(0, 4))
-        var week =  Integer.parseInt(nWeek.substring(4, 6))
-
-
-        var w = ""
-        if (week == 1) {
-          year = year - 1
-          w = "52"
-        } else if (week < 11 && week > 1) {
-          w = 0 + "" + (week - 1)
-        } else {
-          w = (week - 1) + ""
-        }
-
-        val start = format2.parse(year + "" + w).getTime
 
         while (ite.hasNext) {
 
@@ -160,12 +141,12 @@ object Download {
           try {
 
             val userId = r.getAs[Long](0).longValue()
-            val corrects = r.getAs[Seq[Long]](1).map(_.asInstanceOf[Int].intValue()).toArray
-            val questions = r.getAs[Seq[Long]](2).map(_.asInstanceOf[Int].intValue()).toArray
-            val times = r.getAs[Seq[Long]](3).map(_.asInstanceOf[Int].intValue()).toArray
+            val corrects = r.getAs[Seq[Int]](1).toArray
+            val questions = r.getAs[Seq[Int]](2).toArray
+            val times = r.getAs[Seq[Int]](3).toArray
             val createTime = r.getAs[Long](4).longValue()
-            val subject = r.getAs[Long](5).asInstanceOf[Int].intValue()
-            val status = r.getAs[Long](6).asInstanceOf[Int].intValue()
+            val subject = r.getAs[Int](5).intValue()
+            val status = r.getAs[Int](6).intValue()
 
             val points = new ArrayBuffer[Int]()
             questions.foreach { qid =>
@@ -174,9 +155,9 @@ object Download {
               points += pid
             }
             //
-            if (createTime >= start && end >= createTime && status == 3) {
+            if (status == 3) {
 
-              arr += AnswerCard3(userId, corrects, questions, points.toArray, times, format.format(new Date(createTime)), subject, format2.format(new Date(createTime)))
+              arr += AnswerCard3(userId, corrects, questions, points.toArray, times, format.format(new Date(createTime)), subject)
             }
           } catch {
             case ex: NumberFormatException => {
@@ -189,7 +170,13 @@ object Download {
             }
             case ex3: ClassCastException => {
               ex3.printStackTrace()
-              println(r)
+              println(r.get(0).getClass.getName)
+              println(r.get(1).getClass.getName)
+              println(r.get(2).getClass.getName)
+              println(r.get(3).getClass.getName)
+              println(r.get(4).getClass.getName)
+              println(r.get(5).getClass.getName)
+              println(r.get(5).getClass.getName)
             }
           }
         }
@@ -197,7 +184,7 @@ object Download {
     }.toDF()
 
     zac.cache()
-    zac.repartition(1).write.mode(SaveMode.Overwrite).partitionBy("partitiontime")
+    zac.repartition(1).write.mode(SaveMode.Overwrite).partitionBy("createtime")
       .saveAsTable(hive_outPut_table)
   }
 
