@@ -33,7 +33,7 @@ object MongoDownload {
 
     val conf = new SparkConf()
       .setAppName("mongo-ztk_answer_card")
-//      .setMaster("local")
+      .setMaster("local")
       .set("hive.exec.dynamic.partition", "true")
       .set("hive.exec.dynamic.partition.mode", "nonstrict")
       .set("hive.exec.max.dynamic.partitions", "1800")
@@ -103,7 +103,7 @@ object MongoDownload {
     ztk_answer_card.printSchema()
 
     ztk_answer_card.createOrReplaceTempView("zac")
-    val card = sparkSession.sql("select userId,corrects,paper.questions,times,createTime,subject,status from zac where createTime >= 1566230400000 ")
+    val card = sparkSession.sql("select userId,corrects,paper.questions,times,createTime,subject,status from zac  ")
 
     import sparkSession.implicits._
 
