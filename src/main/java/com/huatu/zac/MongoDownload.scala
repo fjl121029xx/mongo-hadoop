@@ -1,4 +1,4 @@
-package com.li.zac
+package com.huatu.zac
 
 import java.io.File
 import java.text.SimpleDateFormat
@@ -10,41 +10,30 @@ import org.apache.spark.sql.{Row, SaveMode, SparkSession}
 
 import scala.collection.mutable.{ArrayBuffer, Map}
 
-case class AnswerCard3(
-                        userid: Long,
-                        correct: Array[Int],
-                        question: Array[Int],
-                        point: Array[Int],
-                        answertime: Array[Int],
-                        createtime: String,
-                        subject: Int
-                      )
+case class ACard(
+                  userid: Long,
+                  correct: Array[Int],
+                  question: Array[Int],
+                  point: Array[Int],
+                  answertime: Array[Int],
+                  createtime: String,
+                  subject: Int
+                )
 
-object Download {
+object MongoDownload {
 
   def main(args: Array[String]): Unit = {
 
 
-    //    var inputUrl = "mongodb://192.168.100.20:37017/huatu_ztk"
-    //    var hive_outPut_table = "zac2"
     var inputUrl = "mongodb://huatu_ztk:wEXqgk2Q6LW8UzSjvZrs@192.168.100.153:27017,192.168.100.153:27017,192.168.100.155:27017/huatu_ztk"
-    var hive_outPut_table = "tmp_zac"
-    //
-    if (args.length == 2) {
+    var hive_outPut_table = "tmp_zac_9"
 
-      inputUrl = args(0)
-      hive_outPut_table = args(1)
-    }
-
-    //    inputUrl = "mongodb://192.168.100.20:37017/huatu_ztk"
-    //    hive_outPut_table = "zac2"
-    //
     val warehouseLocation = new File("spark-warehouse").getAbsolutePath
     System.setProperty("HADOOP_USER_NAME", "root")
 
     val conf = new SparkConf()
       .setAppName("mongo-ztk_answer_card")
-      //      .setMaster("local")
+//      .setMaster("local")
       .set("hive.exec.dynamic.partition", "true")
       .set("hive.exec.dynamic.partition.mode", "nonstrict")
       .set("hive.exec.max.dynamic.partitions", "1800")
@@ -114,74 +103,74 @@ object Download {
     ztk_answer_card.printSchema()
 
     ztk_answer_card.createOrReplaceTempView("zac")
-    val card = sparkSession.sql("select userId,corrects,paper.questions,times,createTime,subject,status from zac")
+    val card = sparkSession.sql("select userId,corrects,paper.questions,times,createTime,subject,status from zac where createTime >= 1566230400000 ")
 
     import sparkSession.implicits._
 
     card.show()
 
-    val zac = card.mapPartitions {
+    val zac = card
+      .mapPartitions {
 
 
-      ite: Iterator[Row] =>
+        ite: Iterator[Row] =>
 
-        val q2pMap = q2p.value
-        val format = new SimpleDateFormat("yyyyMMdd")
-        val format2 = new SimpleDateFormat("yyyyMM")
-        val arr = new ArrayBuffer[AnswerCard3]()
+          val q2pMap = q2p.value
+          val format = new SimpleDateFormat("yyyyMMdd")
+          val format2 = new SimpleDateFormat("yyyyMM")
+          val arr = new ArrayBuffer[ACard]()
 
-        val start = System.currentTimeMillis() - 2 * 24 * 60 * 60 * 1000L
-        val end = System.currentTimeMillis()
+          val start = System.currentTimeMillis() - 2 * 24 * 60 * 60 * 1000L
 
-        while (ite.hasNext) {
+          while (ite.hasNext) {
 
-          val r = ite.next()
+            val r = ite.next()
 
 
-          try {
+            try {
 
-            val userId = r.getAs[Long](0).longValue()
-            val corrects = r.getAs[Seq[Int]](1).toArray
-            val questions = r.getAs[Seq[Int]](2).toArray
-            val times = r.getAs[Seq[Int]](3).toArray
-            val createTime = r.getAs[Long](4).longValue()
-            val subject = r.getAs[Int](5).intValue()
-            val status = r.getAs[Int](6).intValue()
+              val userId = r.getAs[Long](0).longValue()
+              val corrects = r.getAs[Seq[Int]](1).toArray
+              val questions = r.getAs[Seq[Int]](2).toArray
+              val times = r.getAs[Seq[Int]](3).toArray
+              val createTime = r.getAs[Long](4).longValue()
+              val subject = r.getAs[Int](5).intValue()
+              val status = r.getAs[Int](6).intValue()
 
-            val points = new ArrayBuffer[Int]()
-            questions.foreach { qid =>
+              val points = new ArrayBuffer[Int]()
+              questions.foreach { qid =>
 
-              val pid: Int = q2pMap.getOrElse(qid, 0)
-              points += pid
-            }
-            //
-            if (createTime >= start && createTime <= end && status == 3) {
+                val pid: Int = q2pMap.getOrElse(qid, 0)
+                points += pid
+              }
+              //
+              if (createTime >= start && status == 3) {
 
-              arr += AnswerCard3(userId, corrects, questions, points.toArray, times, format.format(new Date(createTime)), subject)
-            }
-          } catch {
-            case ex: NumberFormatException => {
-              ex.printStackTrace()
-              println(r)
-            }
-            case ex2: NullPointerException => {
-              ex2.printStackTrace()
-              println(r)
-            }
-            case ex3: ClassCastException => {
-              ex3.printStackTrace()
-              println(r.get(0).getClass.getName)
-              println(r.get(1).getClass.getName)
-              println(r.get(2).getClass.getName)
-              println(r.get(3).getClass.getName)
-              println(r.get(4).getClass.getName)
-              println(r.get(5).getClass.getName)
-              println(r.get(5).getClass.getName)
+                arr += ACard(userId, corrects, questions, points.toArray, times, format.format(new Date(createTime)), subject)
+              }
+            } catch {
+              case ex: NumberFormatException => {
+                ex.printStackTrace()
+                println(r)
+              }
+              case ex2: NullPointerException => {
+                ex2.printStackTrace()
+                println(r)
+              }
+              case ex3: ClassCastException => {
+                ex3.printStackTrace()
+                println(r.get(0).getClass.getName)
+                println(r.get(1).getClass.getName)
+                println(r.get(2).getClass.getName)
+                println(r.get(3).getClass.getName)
+                println(r.get(4).getClass.getName)
+                println(r.get(5).getClass.getName)
+                println(r.get(5).getClass.getName)
+              }
             }
           }
-        }
-        arr.iterator
-    }.toDF()
+          arr.iterator
+      }.toDF()
 
     zac.cache()
     zac.repartition(1).write.mode(SaveMode.Overwrite).partitionBy("createtime")
